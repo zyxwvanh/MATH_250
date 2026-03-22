@@ -1,0 +1,219 @@
+---
+title: "What Factors Make Horror Movie Successful?"
+author: "Minavanh CHIRDCHUNG"
+format: html
+embed-resources: true
+---
+
+## Setting up
+
+```{r}
+#| label: setup
+#| message: false
+
+library(tidyverse)
+library(gt)
+library(scales)
+library(dplyr)
+
+horror <- readr::read_csv("horror_movies.csv")
+```
+
+## Introduction
+
+Personally, I really enjoy watching horror movies with my friends. The feelings of fear, suspense, and psychological tension are exciting and different from what I get from other genres like romance, drama, or fantasy. What makes it even better is watching together, especially during jump scares when everyone reacts at the same time. Those shared moments make the experience more fun and memorable. I remember when I was living in a boarding house in high school, my friends and I even had a monthly Friday horror movie night.
+
+One of our all-time favorite horror movies is *Talk to Me* by *A24*. I really like its unique concept of using a mysterious severed, embalmed hand to communicate with spirits. It also shows how people become addicted to that experience, which feels similar to drug addiction. That idea made the movie more meaningful and interesting to me. Talk to Me is considered part of a new generation of horror films and was described as a very creepy modern horror built on classic ideas by Rotten Tomatoes's critics consensus. It received high ratings, with 94% on the Rotten Tomatoes Tomatometer and 83% from audiences. It was also very successful financially, earning about 47.6 million USD from a 4.5 million USD budget, making it one of A24’s most successful films.^[Talk to Me <https://www.rottentomatoes.com/m/talk_to_me_2023>]
+
+The movie also won *Best Horror Film* at the *Saturn Awards in 2024*, along with many other nominations and wins.^[Talk to Me (2022) <https://www.imdb.com/title/tt10638522/awards>] All of this made me reflect on how horror movies have remained one of the most popular and long-lasting genres in the entertainment industry. At the same time, movie preferences are very subjective. For example, I am part of the 94% who rated Talk to Me highly, but others might not enjoy it as much. This made me curious about what actually makes a horror movie successful, so I came up with the research question of *"What Factors Make Horror Movie Successful?"*. Even though horror films are popular, there is often a gap between what people watch and what they consider to be good movies. This project explores whether popular horror movies are also highly rated, or if their success is influenced by other factors like rating, budgeting, marketing or shock value.
+
+## Data Cleaning and Preparation
+
+First, I begin with cleaning the data set by removing movies with missing or zero values for `budget` and `revenue`. I have noticed that some movies, included *Talk to Me*, have their budget or revenue recorded as 0, which likely indicates missing data rather than actual values. So, to ensure a more accurate analysis, these movies will be excluded when examining relationships involving budget and revenue. However, they will still be included in other parts of the analysis where those variables are not required.
+
+```{r}
+horror_clean <- horror |>
+  filter(budget > 0,
+         revenue > 0)
+```
+
+## Analysis
+
+### Observation 1. Budget vs Revenue 
+
+First, let’s take a look at the top 10 movies by budget and by revenue to get an idea of their financial range.
+
+#### Budget
+
+```{r}
+top_budget <- horror_clean |> 
+  arrange(desc(budget)) |>
+  select(title,
+         budget,
+         revenue) |> 
+  head (n = 10)
+
+gt(top_budget) 
+```
+
+From table above, we noticed that the budget value was shown as "2e+08" or revenue value which was shown as an unformatted numeric value of "531865000". These can be difficult to read. So, to make the table clearer, I looked up ways to format numeric data in gt and found the function `fmt_currency()`.^[fmt_currency: Format values as currencies <https://www.rdocumentation.org/packages/gt/versions/1.2.0/topics/fmt_currency>]
+
+```{r}
+top_budget <- horror_clean |> 
+  arrange(desc(budget)) |> 
+  dplyr::select(title, budget, revenue) |> 
+  head(n = 10) |>
+  gt() |> 
+  fmt_currency(columns = budget,
+               currency = "USD") |>
+  fmt_currency(columns = revenue,
+               currency = "USD")
+
+top_budget
+```
+
+From the table above, we see that the highest budget movie is *World War Z* with the total budget of 200,000,000.00 USD and 531,865,000.00 USD. In contrast, *Messengers* also had the same budget of 200,000,000.00 USD, but only made 5,224,221.00 USD. This shows the sign that having the highest budget does not always guarantee the most profit.
+
+#### Revenue
+
+```{r}
+top_revenue <- horror_clean |> 
+  arrange(desc(revenue)) |> 
+  dplyr::select(title, revenue, budget) |> 
+  head(n = 10) |>
+  gt() |> 
+  fmt_currency(columns = revenue,
+               currency = "USD") |>
+  fmt_currency(columns = budget,
+               currency = "USD")
+  
+top_revenue
+```
+
+In this table, we can see that *It* had the highest revenue of 701,842,551.00 USD with the budget of 35,000,000 USD. Following by *World War Z* which was the highest budget movie in the previous table and now ranks as second in revenue. This data further emphasizes the observation point.
+
+```{r}
+horror_clean |>
+  mutate(budget_group = if_else(budget > mean(budget, 
+                                              na.rm = TRUE),
+                                "High",
+                                "Low")) |>
+  group_by(budget_group) |>
+  summarize(avg_revenue = mean(revenue, 
+                               na.rm = TRUE)) |>
+  gt() |>
+  fmt_currency(columns = avg_revenue,
+               currency = "USD")
+```
+
+Here, I want to quickly summarize the budget and revenue value, so I use `if_else()` to split movies into "High" or "Low" budget groups based on whether their budget is above or below the average.
+
+#### Budget vs Revenue Plot
+
+```{r}
+#| message: false
+
+ggplot(horror_clean,
+       aes(x = budget,
+           y = revenue)) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  labs(title = "Budget vs Revenue in Horror Movies",
+       x = "Budget",
+       y = "Revenue") +
+  theme_minimal()
+```
+
+As we can see from the plot above, there is a positive relationship between budget and revenue. This means that movies with higher budgets tend to generate more revenue, as they can invest more in well-known actors, better production quality, and stronger marketing strategies, such as advertising on large platforms like YouTube. However, the points are quite spread out, which suggests that having a bigger budget does not always guarantee financial success. 
+
+The two tables above plus a low budget movie like *Talk to Me* is a really good example to support this observation. While *Talk to Me* had a relatively small budget, it was highly profitable. This shows that creativity and storytelling can be as important as financial investment.
+
+I also noticed here that the values on both the x-axis and y-axis are shown in "e+08". To make the graph clearer, I looked up ways to adjust the scale for continuous data and found the functions `scale_x_continuous()` and `scale_y_continuous()`.^[Position scales for continuous data (x & y) <https://ggplot2.tidyverse.org/reference/scale_continuous.html>] With the use of these functions, I got this new plot:
+
+```{r}
+#| message: false
+
+ggplot(horror_clean,
+       aes(x = budget,
+           y = revenue)) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  scale_x_continuous(labels = scales::label_dollar()) +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Budget vs Revenue in Horror Movies",
+       x = "Budget",
+       y = "Revenue") +
+  theme_minimal()
+```
+
+### Observation 2. Popularity vs Rating
+
+#### Top Rated Horror Movies
+
+As mentioned earlier, movie preferences are very subjective. However, they still play an important role in influencing audience decisions. So, let’s take a look at the top rated horror movies. 
+
+Notice. Since I will not be using the `budget` and `revenue` variables for this part, I will use the original `horror` data set instead of `horror_clean`.
+
+```{r}
+top_rated <- horror |>
+  filter(vote_count > 100) |>
+  arrange(desc(vote_average)) |>
+  select(title, 
+         vote_average, 
+         vote_count, 
+         popularity) |>
+  head(n = 10)
+
+gt(top_rated)
+```
+
+We can see that the highest rated movie, *Psycho*, has a reasonable number of votes of 8,452 votes. However, some movies have very high ratings but only a small number of votes or low popularity, for example, *Abraham Lincoln Vampire Hunter: The Great Calamity*, which has 8.2 rate but only has around 200 votes and 5.071 popularity. This shows that the highest rating doesn’t always mean a movie is the most popular. It also makes me wonder how popularity affects ratings. I tried setting a minimum of 100 votes, but that excluded some movies and caused a loss of data. However, keeping all movies could also affect the results. So, I decided to explore this further by looking at the relationship between rating and popularity.
+
+#### Popularity vs Rating Plot
+
+```{r}
+ggplot(horror,
+       aes(x = popularity,
+           y = vote_average)) +
+  geom_point() +
+  labs(title = "Popularity vs Rating",
+       x = "Popularity",
+       y = "Average Rating") +
+  theme_minimal()
+```
+
+From the plot above, we can see that most movies are clustered at low popularity values, while only a few have extremely high popularity. On the other hand, ratings vary widely across all levels of popularity. Also, the plot clearly shows that there is almost no a relationship between popularity and rating.
+
+### Observation 3. Revenue vs Popularity and Budget vs Popularity
+
+Notice. Since I will be using the `revenue` and `budget` variables for this part, I will use the `horror_clean` data set. This means some observation movies will be removed due to missing or zero values. Although this reduces the amount of data, I believe it helps ensure that the analysis is more accurate and not affected by incomplete values.
+
+```{r}
+ggplot(horror_clean,
+       aes(x = revenue,
+           y = popularity)) +
+  geom_point() +
+  scale_x_continuous(labels = scales::label_dollar()) +
+  labs(title = "Revenue vs Popularity",
+       x = "Revenue",
+       y = "Popularity") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(horror_clean,
+       aes(x = budget,
+           y = popularity)) +
+  geom_point() +
+  scale_x_continuous(labels = scales::label_dollar()) +
+  labs(title = "Budget vs Popularity",
+       x = "Budget",
+       y = "Popularity") +
+  theme_minimal()
+```
+
+From the two plots above, there are almost no relationship between revenue and popularity, and budget and popularity. Most movies are clustered at low popularity values, even when their revenue or budget is high, and the trend line appears almost flat. 
+
+### Conclusion
+
+From the observations above, we can see that horror movie success comes from a mix of factors. Higher budgets can help boost financial success, but they do not guarantee profit and popularity, *Talk to Me proves* that. High ratings do not always mean a movie is popular, and revenue does not always match popularity either. So, a movie's success depends on more than just budget and popularity.
